@@ -202,10 +202,12 @@ mod tests {
             Ok(frame)
         }
 
+        #[allow(dead_code)]
         pub fn get_pda_pk(&self) -> Pubkey {
             self.pda_pk.clone()
         }
 
+        #[allow(dead_code)]
         pub fn inspect_data(&self) {
             eprintln!("{}", self.get_pda_pk());
             let account = self.svm.get_account(&self.get_pda_pk()).unwrap();
