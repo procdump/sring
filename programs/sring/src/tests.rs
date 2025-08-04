@@ -242,6 +242,13 @@ mod tests {
             assert!(&res == &[1u8; FRAME_LEN as usize - FRAME_LEN_FIELD_LEN as usize]);
         }
 
+        let frame = [1u8; FRAME_LEN as usize - FRAME_LEN_FIELD_LEN as usize];
+        for _ in 0..FRAMES_NUM * 8 {
+            frame_ring.enqueue_frame(&frame)?;
+            let res = frame_ring.dequeue_frame()?;
+            assert!(&res == &[1u8; FRAME_LEN as usize - FRAME_LEN_FIELD_LEN as usize]);
+        }
+
         Ok(())
     }
 }
