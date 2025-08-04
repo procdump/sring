@@ -78,6 +78,6 @@ pub struct AddFrameSlot<'info> {
     )]
     pub ring_account: Account<'info, SRing>,
 
-    // System program is required for account creation.
+    // System program is required for account manipulation.
     pub system_program: Program<'info, System>,
 }
