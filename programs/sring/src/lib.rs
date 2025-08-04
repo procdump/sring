@@ -117,7 +117,7 @@ pub mod sring {
         let frame_slot = &frame_slot[..frame_len as usize];
         // msg!("frame_slot_plus_len len: {}", frame_slot.len());
 
-        anchor_lang::solana_program::program::set_return_data(&frame_slot);
+        anchor_lang::solana_program::program::set_return_data(frame_slot);
         ring_account.read_idx = (ring_account.read_idx + 1) % FRAMES_NUM;
         ring_account.count -= 1;
 
