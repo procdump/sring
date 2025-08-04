@@ -20,3 +20,22 @@ idl-build = ["anchor-lang/idl-build"]
 [dependencies]
 anchor-lang = "0.31.1"
 
+# the dev-dependencies mean that they can be used within tests!
+[dev-dependencies]
+litesvm = "0.6.1"
+#litesvm = { git = "https://github.com/LimeChain/litesvm.git" }
+solana-account = "2.2"
+solana-hash = "2.2"
+solana-instruction = "2.2"
+solana-keypair = "2.2"
+solana-message = "2.2"
+solana-pubkey = "2.2"
+solana-signer = "2.2"
+solana-transaction = "2.2"
+solana-program = "2.2"
+solana-msg = "2.2"
+solana-program-error = "2.2"
+spl-associated-token-account = "7.0.0"
+spl-token-2022 = "9.0.0"
+solana-transaction-error = "2.2"
+solana-instructions-sysvar = "=2.2.1"
