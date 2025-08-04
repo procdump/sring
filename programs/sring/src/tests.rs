@@ -10,7 +10,6 @@ mod tests {
     use solana_pubkey::Pubkey;
     use solana_signer::Signer;
     use solana_transaction::Transaction;
-    use solana_transaction_error::TransactionError;
 
     #[test]
     fn test_initialize_ring() -> ProgramResult {
@@ -42,19 +41,12 @@ mod tests {
             AccountMeta::new(pda_pubkey, false), // even if not created already we must pass it!
             AccountMeta::new(system_program::ID, false),
         ];
-        // discriminator + a borshed empty vec....
-        let mut ix_data = vec![183, 129, 68, 92, 121, 234, 98, 108];
-        let ix_data = {
-            let v: Vec<u8> = vec![];
-            let data = borsh::to_vec(&v)?;
-            // println!("empty vec borshed -> {:?}", data);
-            ix_data.extend_from_slice(&data);
-            ix_data
-        };
+        // discriminator only here - no args!
+        let ix_data = vec![183, 129, 68, 92, 121, 234, 98, 108];
         let instructions = [Instruction::new_with_bytes(
             program_id,
             &ix_data,
-            ix_accounts,
+            ix_accounts.clone(),
         )];
 
         let trans = Transaction::new_signed_with_payer(
@@ -66,6 +58,39 @@ mod tests {
 
         let res = svm.send_transaction(trans.clone()).unwrap();
         println!("sring's initialize_ring -> {}", res.pretty_logs());
+
+        let frames_num_to_init = 16;
+        // Now add some frame slots.
+        for i in 0..frames_num_to_init {
+            println!("iterating! {}", i);
+            svm.expire_blockhash();
+            let recent_blockhash = svm.latest_blockhash();
+
+            // discriminator + a borshed count...
+            let mut ix_data = vec![110, 185, 160, 221, 234, 187, 242, 234];
+            let ix_data = {
+                let count = i as u64 + 1;
+                let data = borsh::to_vec(&count)?;
+                // println!("empty vec borshed -> {:?}", data);
+                ix_data.extend_from_slice(&data);
+                ix_data
+            };
+            let instructions = [Instruction::new_with_bytes(
+                program_id,
+                &ix_data,
+                ix_accounts.clone(),
+            )];
+
+            let trans = Transaction::new_signed_with_payer(
+                &instructions[..],
+                Some(&payer_pk),
+                &[&payer_kp],
+                recent_blockhash,
+            );
+
+            let res = svm.send_transaction(trans.clone()).unwrap();
+            println!("sring's add_frame_slot -> {}", res.pretty_logs());
+        }
 
         Ok(())
     }
