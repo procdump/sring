@@ -169,7 +169,7 @@ mod tests {
                 .svm
                 .send_transaction(trans.clone())
                 .map_err(|e| e.err.to_string())?;
-            println!("sring's enqueue_frame -> {}", res.pretty_logs());
+            // println!("sring's enqueue_frame -> {}", res.pretty_logs());
 
             Ok(())
         }
@@ -204,7 +204,7 @@ mod tests {
                 .svm
                 .send_transaction(trans.clone())
                 .map_err(|e| e.err.to_string())?;
-            println!("sring's dequeue_frame -> {}", res.pretty_logs());
+            // println!("sring's dequeue_frame -> {}", res.pretty_logs());
 
             let frame = res.return_data.data;
             Ok(frame)
@@ -330,7 +330,7 @@ mod tests {
                 loop {
                     let amount = udp_socket.recv(&mut buf).unwrap();
                     let payload = &buf[..amount];
-                    println!("UDP RX: {:02x?}", payload);
+                    // println!("UDP RX: {:02x?}", payload);
                     tun_writer.write(&payload).unwrap();
                 }
             }
@@ -346,7 +346,7 @@ mod tests {
                     match job {
                         SenderJob::PacketEnqueued => {
                             if let Ok(frame) = frame_ring.lock().unwrap().dequeue_frame() {
-                                println!("{:02x?}", frame);
+                                // println!("{:02x?}", frame);
                                 udp_socket.send_to(&frame, &dst).unwrap();
                             }
                         }
@@ -358,7 +358,7 @@ mod tests {
         let mut buf = [0; 2048];
         loop {
             let amount = tun_reader.read(&mut buf)?;
-            println!("{:02x?}", &buf[..amount]);
+            // println!("{:02x?}", &buf[..amount]);
             let _ = frame_ring.lock().unwrap().enqueue_frame(&buf[..amount]);
             frame_ring.lock().unwrap().inspect_lamports();
             tx.send(SenderJob::PacketEnqueued)?;
