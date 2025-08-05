@@ -9,6 +9,7 @@ mod tests {
 
     use anchor_lang::prelude::borsh;
     use litesvm::LiteSVM;
+    use solana_account::ReadableAccount;
     use solana_instruction::{AccountMeta, Instruction};
     use solana_keypair::Keypair;
     use solana_program::system_program;
@@ -220,6 +221,14 @@ mod tests {
             let account = self.svm.get_account(&self.get_pda_pk()).unwrap();
             let _ = std::fs::write("/tmp/data.txt", format!("{:#?}", account.data));
         }
+
+        #[allow(dead_code)]
+        pub fn inspect_lamports(&self) {
+            eprintln!(
+                "lamports left: {}",
+                self.svm.get_account(&self.payer_pk).unwrap().lamports()
+            );
+        }
     }
 
     #[ignore]
@@ -336,9 +345,10 @@ mod tests {
                 for job in rx {
                     match job {
                         SenderJob::PacketEnqueued => {
-                            let frame = frame_ring.lock().unwrap().dequeue_frame().unwrap();
-                            println!("{:02x?}", frame);
-                            udp_socket.send_to(&frame, &dst).unwrap();
+                            if let Ok(frame) = frame_ring.lock().unwrap().dequeue_frame() {
+                                println!("{:02x?}", frame);
+                                udp_socket.send_to(&frame, &dst).unwrap();
+                            }
                         }
                     }
                 }
@@ -349,7 +359,8 @@ mod tests {
         loop {
             let amount = tun_reader.read(&mut buf)?;
             println!("{:02x?}", &buf[..amount]);
-            frame_ring.lock().unwrap().enqueue_frame(&buf[..amount])?;
+            let _ = frame_ring.lock().unwrap().enqueue_frame(&buf[..amount]);
+            frame_ring.lock().unwrap().inspect_lamports();
             tx.send(SenderJob::PacketEnqueued)?;
         }
     }
