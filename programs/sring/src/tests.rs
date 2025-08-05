@@ -360,7 +360,8 @@ mod tests {
             let amount = tun_reader.read(&mut buf)?;
             // println!("{:02x?}", &buf[..amount]);
             frame_ring.lock().unwrap().inspect_lamports();
-            if let Ok(_) = frame_ring.lock().unwrap().enqueue_frame(&buf[..amount]) {
+            let res = frame_ring.lock().unwrap().enqueue_frame(&buf[..amount]);
+            if res.is_ok() {
                 tx.send(SenderJob::PacketEnqueued)?;
             }
         }
