@@ -165,11 +165,11 @@ mod tests {
                 recent_blockhash,
             );
 
-            let res = self
+            let _res = self
                 .svm
                 .send_transaction(trans.clone())
                 .map_err(|e| e.err.to_string())?;
-            // println!("sring's enqueue_frame -> {}", res.pretty_logs());
+            // println!("sring's enqueue_frame -> {}", _res.pretty_logs());
 
             Ok(())
         }

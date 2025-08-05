@@ -7,7 +7,7 @@ declare_id!("52rK34hDp4374vyuc2Psp2951rEpGwj7UpisGVeHjdWW");
 pub const DISCRIMINATOR_LEN: u64 = 8;
 pub const FRAME_LEN_FIELD_LEN: u64 = 8;
 pub const FRAME_LEN: u64 = 1024 - FRAME_LEN_FIELD_LEN; // due to set_return_data's limit
-pub const FRAMES_NUM: u64 = 128;
+pub const FRAMES_NUM: u64 = 512;
 
 #[error_code]
 pub enum SRingError {
