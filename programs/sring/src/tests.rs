@@ -1,5 +1,12 @@
 #[cfg(test)]
 mod tests {
+    use std::{
+        io::{Read, Write},
+        net::{Ipv4Addr, SocketAddrV4, UdpSocket},
+        str::FromStr,
+        sync::{Arc, Mutex},
+    };
+
     use anchor_lang::prelude::borsh;
     use litesvm::LiteSVM;
     use solana_instruction::{AccountMeta, Instruction};
@@ -215,6 +222,7 @@ mod tests {
         }
     }
 
+    #[ignore]
     #[test]
     fn test_frame_ring() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let mut frame_ring = FrameRing::new(&crate::ID)?;
@@ -252,5 +260,96 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    #[test]
+    fn test_traffic() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        enum SenderJob {
+            PacketEnqueued,
+        }
+
+        let tun_local_addr =
+            Ipv4Addr::from_str(&std::env::var("TUN_LOCAL_ADDR").unwrap_or("2.1.1.1".into()))?;
+        let tun_remote_addr =
+            Ipv4Addr::from_str(&std::env::var("TUN_REMOTE_ADDR").unwrap_or("2.1.1.2".into()))?;
+        let listen_addr_port = std::env::var("UDP_LISTEN").unwrap_or("0.0.0.0:2111".into());
+        // let listen_addr = listen_addr_port.split(':').nth(0).expect("Wrong listen_addr_port format.");
+        // let listen_port =listen_addr_port.split(':').nth(1).expect("Wrong listen_addr_port format.");
+        let dst_addr_port = std::env::var("UDP_DST_ADDR").unwrap_or("192.168.0.99:2112".into());
+        let dst_addr = dst_addr_port
+            .split(':')
+            .nth(0)
+            .expect("Wrong dst_addr_port format.")
+            .to_string();
+        let dst_port: u16 = dst_addr_port
+            .split(':')
+            .nth(1)
+            .expect("Wrong dst_addr_port format.")
+            .parse()
+            .expect("Wrong port");
+        let tun_mtu = FRAME_LEN as u16;
+        let mut config = tun::Configuration::default();
+        config
+            .address((
+                tun_local_addr.octets()[0],
+                tun_local_addr.octets()[1],
+                tun_local_addr.octets()[2],
+                tun_local_addr.octets()[3],
+            ))
+            .netmask((255, 255, 255, 0))
+            .destination((
+                tun_remote_addr.octets()[0],
+                tun_remote_addr.octets()[1],
+                tun_remote_addr.octets()[2],
+                tun_remote_addr.octets()[3],
+            ))
+            .mtu(tun_mtu)
+            .up();
+
+        let udp_socket = Arc::new(UdpSocket::bind(listen_addr_port).unwrap());
+        let dev = Arc::new(Mutex::new(tun::create(&config)?));
+        let (tx, rx) = crossbeam::channel::unbounded();
+        let frame_ring = Arc::new(Mutex::new(FrameRing::new(&crate::ID)?));
+        frame_ring.lock().unwrap().init()?;
+
+        // UDP RX
+        let _ = std::thread::spawn({
+            let udp_socket = Arc::clone(&udp_socket);
+            let dev = Arc::clone(&dev);
+            move || {
+                let mut buf = [0; 2048];
+                loop {
+                    let amount = udp_socket.recv(&mut buf).unwrap();
+                    let payload = &buf[..amount];
+                    dev.lock().unwrap().write(&payload).unwrap();
+                }
+            }
+        });
+
+        // UDP TX
+        let _ = std::thread::spawn({
+            let frame_ring = Arc::clone(&frame_ring);
+            let udp_socket = Arc::clone(&udp_socket);
+            move || {
+                let dst = SocketAddrV4::new(Ipv4Addr::from_str(&dst_addr).unwrap(), dst_port);
+                for job in rx {
+                    match job {
+                        SenderJob::PacketEnqueued => {
+                            let frame = frame_ring.lock().unwrap().dequeue_frame().unwrap();
+                            println!("{:02x?}", frame);
+                            udp_socket.send_to(&frame, &dst).unwrap();
+                        }
+                    }
+                }
+            }
+        });
+
+        let mut buf = [0; 2048];
+        loop {
+            let amount = dev.lock().unwrap().read(&mut buf)?;
+            println!("{:02x?}", &buf[..amount]);
+            frame_ring.lock().unwrap().enqueue_frame(&buf[..amount])?;
+            tx.send(SenderJob::PacketEnqueued)?;
+        }
     }
 }
