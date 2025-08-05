@@ -307,7 +307,8 @@ mod tests {
             .up();
 
         let udp_socket = Arc::new(UdpSocket::bind(listen_addr_port).unwrap());
-        let dev = Arc::new(Mutex::new(tun::create(&config)?));
+        let dev = tun::create(&config)?;
+        let (mut tun_reader, mut tun_writer) = dev.split();
         let (tx, rx) = crossbeam::channel::unbounded();
         let frame_ring = Arc::new(Mutex::new(FrameRing::new(&crate::ID)?));
         frame_ring.lock().unwrap().init()?;
@@ -315,13 +316,13 @@ mod tests {
         // UDP RX
         let _ = std::thread::spawn({
             let udp_socket = Arc::clone(&udp_socket);
-            let dev = Arc::clone(&dev);
             move || {
                 let mut buf = [0; 2048];
                 loop {
                     let amount = udp_socket.recv(&mut buf).unwrap();
                     let payload = &buf[..amount];
-                    dev.lock().unwrap().write(&payload).unwrap();
+                    println!("UDP RX: {:02x?}", payload);
+                    tun_writer.write(&payload).unwrap();
                 }
             }
         });
@@ -346,7 +347,7 @@ mod tests {
 
         let mut buf = [0; 2048];
         loop {
-            let amount = dev.lock().unwrap().read(&mut buf)?;
+            let amount = tun_reader.read(&mut buf)?;
             println!("{:02x?}", &buf[..amount]);
             frame_ring.lock().unwrap().enqueue_frame(&buf[..amount])?;
             tx.send(SenderJob::PacketEnqueued)?;
