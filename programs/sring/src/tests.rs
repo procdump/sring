@@ -5,6 +5,7 @@ mod tests {
         net::{Ipv4Addr, SocketAddrV4, UdpSocket},
         str::FromStr,
         sync::{Arc, Mutex},
+        time::Duration,
     };
 
     use anchor_lang::prelude::borsh;
@@ -346,6 +347,7 @@ mod tests {
                     match job {
                         SenderJob::PacketEnqueued => {
                             if let Ok(frame) = frame_ring.lock().unwrap().dequeue_frame() {
+                                // println!("Processing frame..");
                                 // println!("{:02x?}", frame);
                                 udp_socket.send_to(&frame, &dst).unwrap();
                             }
@@ -359,11 +361,17 @@ mod tests {
         loop {
             let amount = tun_reader.read(&mut buf)?;
             // println!("{:02x?}", &buf[..amount]);
-            frame_ring.lock().unwrap().inspect_lamports();
-            let res = frame_ring.lock().unwrap().enqueue_frame(&buf[..amount]);
-            if res.is_ok() {
-                tx.send(SenderJob::PacketEnqueued)?;
+            // frame_ring.lock().unwrap().inspect_lamports();
+            loop {
+                let res = frame_ring.lock().unwrap().enqueue_frame(&buf[..amount]);
+                if res.is_err() {
+                    std::thread::sleep(Duration::from_millis(1));
+                    continue;
+                } else {
+                    break;
+                }
             }
+            tx.send(SenderJob::PacketEnqueued)?;
         }
     }
 }
