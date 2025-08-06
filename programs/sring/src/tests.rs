@@ -277,6 +277,9 @@ mod tests {
             PacketEnqueued,
         }
 
+        const IP_HLEN: u16 = 20;
+        const UDP_HLEN: u16 = 8;
+
         let tun_local_addr =
             Ipv4Addr::from_str(&std::env::var("TUN_LOCAL_ADDR").unwrap_or("2.1.1.1".into()))?;
         let tun_remote_addr =
@@ -296,7 +299,7 @@ mod tests {
             .expect("Wrong dst_addr_port format.")
             .parse()
             .expect("Wrong port");
-        let tun_mtu = FRAME_LEN as u16;
+        let tun_mtu = FRAME_LEN as u16 - IP_HLEN - UDP_HLEN;
         let mut config = tun::Configuration::default();
         config
             .address((
